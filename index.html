@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Headshot Icons</title>
+<style>
+  :root {
+    --bg: #f6f6f4; --panel: #fff; --ink: #1b1b1b; --muted: #6b6b6b; --line: #deded9;
+    --accent: #1b1b1b; --ok: #2f7d32; --err: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  p.sub { margin: 0 0 20px; color: var(--muted); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .settings { display: flex; flex-wrap: wrap; gap: 16px 24px; align-items: end; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  label.inline { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); }
+  input[type=number], select, textarea { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
+  input[type=number] { width: 90px; }
+  .color-row { display: flex; align-items: center; gap: 6px; }
+  input[type=color] { width: 36px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: none; }
+  input.hex { width: 90px; font: 13px ui-monospace, monospace; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
+  button:disabled { opacity: .45; cursor: default; }
+  #drop { border: 2px dashed var(--line); border-radius: 10px; padding: 32px 16px; text-align: center; color: var(--muted); cursor: pointer; background: var(--panel); margin-bottom: 16px; }
+  #drop.over { border-color: var(--accent); color: var(--ink); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .toolbar .spacer { flex: 1; }
+  #status { color: var(--muted); font-size: 13px; }
+  details summary { cursor: pointer; font-weight: 600; }
+  details textarea { width: 100%; min-height: 110px; margin-top: 10px; font: 13px ui-monospace, monospace; }
+  #assignMsg { font-size: 13px; color: var(--muted); margin-left: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .thumb { aspect-ratio: 1; border-radius: 8px; display: grid; place-items: center; overflow: hidden;
+    background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0 / 16px 16px; }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; }
+  .thumb .state { font-size: 13px; color: var(--muted); padding: 8px; text-align: center; }
+  .thumb .state.err { color: var(--err); }
+  .name { font-size: 13px; word-break: break-all; }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .seg button { flex: 1; border: 0; border-radius: 0; background: transparent; color: var(--ink); padding: 5px 0; font-size: 13px; }
+  .seg button.on { color: #fff; }
+  .card .actions { display: flex; gap: 6px; }
+  .card .actions button { flex: 1; padding: 5px 0; font-size: 13px; }
+  .card .actions button.x { flex: 0 0 34px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Headshot icons</h1>
+  <p class="sub">Drop photos in. The background is removed in your browser, nothing gets uploaded. Each photo is placed on a red or blue circle and can be downloaded as a PNG.</p>
+
+  <section class="panel settings">
+    <label>Red
+      <span class="color-row"><input type="color" id="redPick"><input class="hex" id="redHex" spellcheck="false"></span>
+    </label>
+    <label>Blue
+      <span class="color-row"><input type="color" id="bluePick"><input class="hex" id="blueHex" spellcheck="false"></span>
+    </label>
+    <label>Output size (px)
+      <input type="number" id="size" min="64" max="4096" step="32">
+    </label>
+    <label>Photo inset (%)
+      <input type="number" id="inset" min="0" max="40" step="0.5">
+    </label>
+    <label>Default color
+      <select id="defaultColor"><option value="red">Red</option><option value="blue">Blue</option></select>
+    </label>
+    <label>Removal quality
+      <select id="model">
+        <option value="isnet_quint8">Fast (~40 MB model)</option>
+        <option value="isnet_fp16">Balanced (~80 MB)</option>
+        <option value="isnet">Best (~170 MB)</option>
+      </select>
+    </label>
+    <label class="inline"><input type="checkbox" id="grayscale"> Grayscale</label>
+    <label class="inline"><input type="checkbox" id="includeCutouts"> Also zip transparent cutouts</label>
+  </section>
+
+  <div id="drop">
+    <strong>Drop photos here</strong> or click to choose (JPG, PNG, WebP)
+    <input type="file" id="fileInput" accept="image/*" multiple hidden>
+  </div>
+
+  <section class="panel">
+    <details>
+      <summary>Paste red/blue assignments</summary>
+      <textarea id="assignText" placeholder="One per line, filename (no extension needed) then color:&#10;jane-doe, red&#10;john_smith.jpg, blue&#10;Alex Kim	blue"></textarea>
+      <div style="margin-top:8px"><button class="ghost" id="applyAssign">Apply</button><span id="assignMsg"></span></div>
+    </details>
+  </section>
+
+  <div class="toolbar">
+    <button class="ghost" id="allRed">All red</button>
+    <button class="ghost" id="allBlue">All blue</button>
+    <button class="ghost" id="clearAll">Clear</button>
+    <span id="status"></span>
+    <span class="spacer"></span>
+    <button id="downloadAll" disabled>Download all (.zip)</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script type="module">
+import { removeBackground } from 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm';
+
+const $ = (id) => document.getElementById(id);
+
+// ---- Settings (remembered between visits) ----
+const DEFAULTS = {
+  red: '#c8102e', blue: '#1f4e9d', size: 512, inset: 7,
+  defaultColor: 'red', model: 'isnet_fp16', grayscale: true, includeCutouts: false,
+};
+let settings = { ...DEFAULTS };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('headshot-settings') || '{}')); } catch {}
+const saveSettings = () => { try { localStorage.setItem('headshot-settings', JSON.stringify(settings)); } catch {} };
+
+const isHex = (v) => /^#[0-9a-f]{6}$/i.test(v);
+
+function bindColor(key) {
+  const pick = $(key + 'Pick'), hex = $(key + 'Hex');
+  pick.value = hex.value = settings[key];
+  pick.addEventListener('input', () => { hex.value = pick.value; update(key, pick.value); });
+  hex.addEventListener('input', () => {
+    let v = hex.value.trim(); if (!v.startsWith('#')) v = '#' + v;
+    if (isHex(v)) { pick.value = v; update(key, v.toLowerCase()); }
+  });
+}
+function bindInput(key, parse, el = $(key)) {
+  const prop = el.type === 'checkbox' ? 'checked' : 'value';
+  el[prop] = settings[key];
+  el.addEventListener('change', () => update(key, parse(el[prop])));
+}
+function update(key, value) {
+  settings[key] = value; saveSettings();
+  // Model changes apply to photos added afterwards; everything else re-renders instantly.
+  if (['red', 'blue', 'size', 'inset', 'grayscale'].includes(key)) items.forEach(renderIcon);
+}
+bindColor('red'); bindColor('blue');
+bindInput('size', (v) => Math.min(4096, Math.max(64, parseInt(v, 10) || DEFAULTS.size)));
+bindInput('inset', (v) => Math.min(40, Math.max(0, parseFloat(v) || 0)));
+bindInput('defaultColor', String);
+bindInput('model', String);
+bindInput('grayscale', Boolean);
+bindInput('includeCutouts', Boolean);
+
+// ---- Photo list ----
+let items = [];
+let nextId = 1;
+const baseName = (n) => n.replace(/\.[^.]+$/, '');
+const normalize = (n) => baseName(n.trim()).toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+function addFiles(files) {
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    const it = { id: nextId++, file, name: baseName(file.name), color: settings.defaultColor, status: 'queued', cutout: null, gray: null, iconBlob: null, iconUrl: null };
+    it.el = makeCard(it);
+    $('grid').append(it.el.root);
+    items.push(it);
+  }
+  refreshToolbar();
+  pump();
+}
+
+function makeCard(it) {
+  const root = document.createElement('div'); root.className = 'card';
+  root.innerHTML = `
+    <div class="thumb"><div class="state">Waiting…</div></div>
+    <div class="name"></div>
+    <div class="seg"><button data-c="red">Red</button><button data-c="blue">Blue</button></div>
+    <div class="actions"><button class="ghost dl" disabled>Download</button><button class="ghost x" title="Remove">✕</button></div>`;
+  root.querySelector('.name').textContent = it.name;
+  root.querySelectorAll('.seg button').forEach((b) => b.addEventListener('click', () => setColor(it, b.dataset.c)));
+  root.querySelector('.dl').addEventListener('click', () => downloadBlob(it.iconBlob, `${it.name}-${it.color}.png`));
+  root.querySelector('.x').addEventListener('click', () => removeItem(it));
+  const el = { root, thumb: root.querySelector('.thumb'), seg: root.querySelectorAll('.seg button'), dl: root.querySelector('.dl') };
+  paintSeg(it, el);
+  return el;
+}
+
+function paintSeg(it, el = it.el) {
+  el.seg.forEach((b) => {
+    const on = b.dataset.c === it.color;
+    b.classList.toggle('on', on);
+    b.style.background = on ? settings[b.dataset.c] : '';
+  });
+}
+
+function setColor(it, color) {
+  if (it.color === color) return;
+  it.color = color; paintSeg(it); renderIcon(it);
+}
+
+function removeItem(it) {
+  items = items.filter((x) => x !== it);
+  if (it.iconUrl) URL.revokeObjectURL(it.iconUrl);
+  it.el.root.remove(); refreshToolbar();
+}
+
+function showState(it, text, isErr = false) {
+  it.el.thumb.innerHTML = '';
+  const d = document.createElement('div'); d.className = 'state' + (isErr ? ' err' : ''); d.textContent = text;
+  it.el.thumb.append(d);
+}
+
+function refreshToolbar() {
+  const done = items.filter((i) => i.status === 'done').length;
+  const failed = items.filter((i) => i.status === 'error').length;
+  const pending = items.length - done - failed;
+  $('downloadAll').disabled = done === 0;
+  $('status').textContent = items.length
+    ? `${done} of ${items.length} ready` + (pending ? `, ${pending} processing` : '') + (failed ? `, ${failed} failed` : '')
+    : '';
+}
+
+// ---- Background removal, one photo at a time ----
+let busy = false;
+async function pump() {
+  if (busy) return;
+  const it = items.find((i) => i.status === 'queued');
+  if (!it) return;
+  busy = true; it.status = 'working';
+  showState(it, 'Removing background…');
+  refreshToolbar();
+  try {
+    const blob = await removeBackground(it.file, {
+      model: settings.model,
+      output: { format: 'image/png' },
+      progress: (key, cur, total) => {
+        if (key.startsWith('fetch') && total) showState(it, `Downloading model ${Math.round((cur / total) * 100)}% (first run only)`);
+      },
+    });
+    it.cutoutBlob = blob;
+    it.cutout = await blobToCanvas(blob);
+    it.gray = toGrayscale(it.cutout);
+    it.status = 'done';
+    await renderIcon(it);
+  } catch (err) {
+    console.error(err);
+    it.status = 'error';
+    showState(it, 'Failed: ' + (err?.message || err), true);
+  }
+  busy = false; refreshToolbar(); pump();
+}
+
+async function blobToCanvas(blob) {
+  const bmp = await createImageBitmap(blob);
+  const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+  c.getContext('2d').drawImage(bmp, 0, 0); bmp.close?.();
+  return c;
+}
+
+function toGrayscale(src) {
+  const c = document.createElement('canvas'); c.width = src.width; c.height = src.height;
+  const ctx = c.getContext('2d'); ctx.drawImage(src, 0, 0);
+  const img = ctx.getImageData(0, 0, c.width, c.height), d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    // Same luma weights as CSS grayscale(1)
+    const y = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    d[i] = d[i + 1] = d[i + 2] = y;
+  }
+  ctx.putImageData(img, 0, 0);
+  return c;
+}
+
+// ---- Icon: colored circle with the cutout inset, center-cropped to fill
+// (mirrors the map's SVG pattern: x/y = inset, size = 1 - 2*inset, xMidYMid slice).
+// Unlike the SVG, overflow is clipped only by the circle, not the inset box, so a
+// transparent cutout doesn't get a hard flat edge across the top of the head.
+async function renderIcon(it) {
+  paintSeg(it);
+  if (it.status !== 'done') return;
+  const S = settings.size, inset = (settings.inset / 100) * S, box = S - 2 * inset;
+  const src = settings.grayscale ? it.gray : it.cutout;
+  const c = document.createElement('canvas'); c.width = c.height = S;
+  const ctx = c.getContext('2d');
+  ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = settings[it.color]; ctx.fillRect(0, 0, S, S);
+  const scale = Math.max(box / src.width, box / src.height);
+  const w = src.width * scale, h = src.height * scale;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, inset + (box - w) / 2, inset + (box - h) / 2, w, h);
+
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  if (it.iconUrl) URL.revokeObjectURL(it.iconUrl);
+  it.iconBlob = blob; it.iconUrl = URL.createObjectURL(blob);
+  const img = new Image(); img.src = it.iconUrl; img.alt = it.name;
+  it.el.thumb.innerHTML = ''; it.el.thumb.append(img);
+  it.el.dl.disabled = false;
+}
+
+// ---- Downloads ----
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+$('downloadAll').addEventListener('click', async () => {
+  const zip = new JSZip();
+  const used = new Set();
+  const unique = (n) => { let out = n, k = 2; while (used.has(out)) out = n.replace(/(\.png)$/, `-${k++}$1`); used.add(out); return out; };
+  for (const it of items.filter((i) => i.status === 'done')) {
+    zip.file(unique(`icons/${it.name}-${it.color}.png`), it.iconBlob);
+    if (settings.includeCutouts) zip.file(unique(`cutouts/${it.name}.png`), it.cutoutBlob);
+  }
+  downloadBlob(await zip.generateAsync({ type: 'blob' }), 'headshot-icons.zip');
+});
+
+// ---- Bulk color controls ----
+$('allRed').addEventListener('click', () => items.forEach((it) => setColor(it, 'red')));
+$('allBlue').addEventListener('click', () => items.forEach((it) => setColor(it, 'blue')));
+$('clearAll').addEventListener('click', () => [...items].forEach(removeItem));
+
+$('applyAssign').addEventListener('click', () => {
+  const byName = new Map(items.map((it) => [normalize(it.name), it]));
+  let matched = 0; const missing = [];
+  for (const line of $('assignText').value.split(/\r?\n/)) {
+    const m = line.trim().match(/^(.*?)[\s,;:\t]+(red|blue)\s*$/i);
+    if (!m) continue;
+    const it = byName.get(normalize(m[1]));
+    if (it) { setColor(it, m[2].toLowerCase()); matched++; } else missing.push(m[1].trim());
+  }
+  $('assignMsg').textContent = `${matched} matched` + (missing.length ? `. Not found: ${missing.join(', ')}` : '');
+});
+
+// ---- File input / drag and drop ----
+const drop = $('drop');
+drop.addEventListener('click', () => $('fileInput').click());
+$('fileInput').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+</script>
+</body>
+</html>
